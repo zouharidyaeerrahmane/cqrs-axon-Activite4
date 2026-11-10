@@ -10,11 +10,14 @@ import com.zouhari.demoescqrsaxon.query.entities.Account;
 import com.zouhari.demoescqrsaxon.query.entities.AccountOperation;
 import com.zouhari.demoescqrsaxon.query.repository.AccountRepository;
 import com.zouhari.demoescqrsaxon.query.repository.OperationRepository;
+import com.zouhari.demoescqrsaxon.query.queries.WatchEventQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.axonframework.config.ProcessingGroup;
 import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.EventMessage;
 import org.axonframework.eventhandling.ResetHandler;
+import org.axonframework.eventhandling.ReplayToken;
+import org.axonframework.queryhandling.QueryUpdateEmitter;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,10 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountEventHandler {
     private final AccountRepository accountRepository;
     private final OperationRepository operationRepository;
+    private final QueryUpdateEmitter queryUpdateEmitter;
 
-    public AccountEventHandler(AccountRepository accountRepository, OperationRepository operationRepository) {
+    public AccountEventHandler(AccountRepository accountRepository, OperationRepository operationRepository,
+                               QueryUpdateEmitter queryUpdateEmitter) {
         this.accountRepository = accountRepository;
         this.operationRepository = operationRepository;
+        this.queryUpdateEmitter = queryUpdateEmitter;
     }
 
     @EventHandler
@@ -74,6 +80,10 @@ public class AccountEventHandler {
         operationRepository.save(operation);
         account.setBalance(account.getBalance() - event.amount());
         accountRepository.save(account);
+        if (!ReplayToken.isReplay(message)) {
+            queryUpdateEmitter.emit(WatchEventQuery.class,
+                    query -> event.accountId().equals(query.getAccountId()), operation);
+        }
     }
 
     @EventHandler
@@ -90,6 +100,10 @@ public class AccountEventHandler {
         operationRepository.save(operation);
         account.setBalance(account.getBalance() + event.amount());
         accountRepository.save(account);
+        if (!ReplayToken.isReplay(message)) {
+            queryUpdateEmitter.emit(WatchEventQuery.class,
+                    query -> event.accountId().equals(query.getAccountId()), operation);
+        }
     }
 
     @ResetHandler
