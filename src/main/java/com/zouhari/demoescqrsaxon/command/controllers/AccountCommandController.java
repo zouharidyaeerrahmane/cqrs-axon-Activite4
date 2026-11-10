@@ -2,8 +2,12 @@ package com.zouhari.demoescqrsaxon.command.controllers;
 
 import com.zouhari.demoescqrsaxon.command.commands.AddAccountCommand;
 import com.zouhari.demoescqrsaxon.command.commands.CreditAccountCommand;
+import com.zouhari.demoescqrsaxon.command.commands.DebitAccountCommand;
+import com.zouhari.demoescqrsaxon.command.commands.UpdateAccountStatusCommand;
 import com.zouhari.demoescqrsaxon.command.dto.AddAccountRequestDTO;
 import com.zouhari.demoescqrsaxon.command.dto.CreditAccountRequestDTO;
+import com.zouhari.demoescqrsaxon.command.dto.DebitAccountRequestDTO;
+import com.zouhari.demoescqrsaxon.command.dto.UpdateAccountStatusRequestDTO;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.eventhandling.DomainEventMessage;
 import org.axonframework.eventsourcing.eventstore.EventStore;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -52,5 +57,16 @@ public class AccountCommandController {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> exceptionHandler(Exception exception) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(exception.getMessage());
+    }
+
+    @PostMapping("/account/debit")
+    public CompletableFuture<String> debitAccount(@RequestBody DebitAccountRequestDTO request) {
+        return commandGateway.send(new DebitAccountCommand(
+                request.accountId(), request.amount(), request.currency()));
+    }
+
+    @PutMapping("/account/updateStatus")
+    public CompletableFuture<String> updateStatus(@RequestBody UpdateAccountStatusRequestDTO request) {
+        return commandGateway.send(new UpdateAccountStatusCommand(request.accountId(), request.status()));
     }
 }
