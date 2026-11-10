@@ -1,0 +1,32 @@
+name: cqrs-eventsourcing-axon-tp
+services:
+  postgres:
+    image: postgres:16.4
+    environment:
+      POSTGRES_DB: es-account-db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-1234}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - account-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d es-account-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  pgadmin:
+    image: dpage/pgadmin4:8.14
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-1234}
+    ports:
+      - "127.0.0.1:8088:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  account-data:
+  pgadmin-data:

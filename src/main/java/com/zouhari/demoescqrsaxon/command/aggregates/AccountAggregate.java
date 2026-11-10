@@ -1,8 +1,11 @@
 package com.zouhari.demoescqrsaxon.command.aggregates;
 
 import com.zouhari.demoescqrsaxon.command.commands.AddAccountCommand;
+import com.zouhari.demoescqrsaxon.command.commands.CreditAccountCommand;
 import com.zouhari.demoescqrsaxon.enums.AccountStatus;
 import com.zouhari.demoescqrsaxon.events.AccountCreatedEvent;
+import com.zouhari.demoescqrsaxon.events.AccountActivatedEvent;
+import com.zouhari.demoescqrsaxon.events.AccountCreditedEvent;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.axonframework.commandhandling.CommandHandler;
@@ -32,6 +35,7 @@ public class AccountAggregate {
         }
         AggregateLifecycle.apply(new AccountCreatedEvent(command.getId(),
                 command.getInitialBalance(), AccountStatus.CREATED, command.getCurrency()));
+        AggregateLifecycle.apply(new AccountActivatedEvent(command.getId(), AccountStatus.ACTIVATED));
     }
 
     @EventSourcingHandler
@@ -40,5 +44,29 @@ public class AccountAggregate {
         this.accountId = event.accountId();
         this.balance = event.initialBalance();
         this.status = event.status();
+    }
+
+    @CommandHandler
+    public void handle(CreditAccountCommand command) {
+        log.info("CreditAccountCommand received: {}", command.getId());
+        if (status != AccountStatus.ACTIVATED) {
+            throw new IllegalStateException("Account " + accountId + " is not activated");
+        }
+        if (command.getAmount() <= 0 || !Double.isFinite(command.getAmount())) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+        AggregateLifecycle.apply(new AccountCreditedEvent(command.getId(), command.getAmount(), command.getCurrency()));
+    }
+
+    @EventSourcingHandler
+    public void on(AccountActivatedEvent event) {
+        log.info("AccountActivatedEvent occurred: {}", event.accountId());
+        this.status = event.status();
+    }
+
+    @EventSourcingHandler
+    public void on(AccountCreditedEvent event) {
+        log.info("AccountCreditedEvent occurred: {}", event.accountId());
+        this.balance += event.amount();
     }
 }
